@@ -219,3 +219,4 @@ const dbSchema = `
   },
 ]
 `
+export default dbSchema; // Export the schema descriptor so other modules can reference it
