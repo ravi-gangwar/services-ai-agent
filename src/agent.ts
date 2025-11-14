@@ -4,10 +4,10 @@ import z from "zod";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { ChatGroq } from "@langchain/groq";
 import dbSchema from "./constants/prompts/dbAgent";
-import { geocodeCityTool, databaseTool } from "./utils/tools";
+import { geocodeCityTool, databaseTool, noLocationTool } from "./utils/tools";
 import { initialPrompt, getFormatPrompt } from "./constants/prompts/response";
 
-const tools = [geocodeCityTool, databaseTool];
+const tools = [geocodeCityTool, databaseTool, noLocationTool];
 const toolNode = new ToolNode(tools);
 
 const llm = new ChatGroq({

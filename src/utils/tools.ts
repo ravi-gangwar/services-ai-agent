@@ -31,5 +31,20 @@ const geocodeCityTool = tool(
   }
 );
 
-export { databaseTool, geocodeCityTool };
+const noLocationTool = tool(
+  async () => {
+    return JSON.stringify({
+      message: "I need your location to find nearby restaurants. Please provide either: 1) Your city name, or 2) Your current place name, or 3) Your latitude and longitude coordinates.",
+      requires_location: true
+    });
+  },
+  {
+    name: "request_location",
+    description:
+      "Use this when the user asks about nearby restaurants but hasn't provided any location information (no city name, no latitude/longitude, no place name). This tool will instruct you to ask the user for their location.",
+    schema: z.object({}),
+  }
+);
+
+export { databaseTool, geocodeCityTool, noLocationTool };
 
