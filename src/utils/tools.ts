@@ -9,7 +9,7 @@ const databaseTool = tool(
   {
     name: "interact_with_database",
     description:
-      "Use this to fetch nearby restaurants. Provide a SQL query that filters by latitude and longitude columns.",
+      "Use this to fetch nearby restaurants. Provide a complete SQL query with actual numeric values (not placeholders). Calculate latitude/longitude ranges around the target coordinates (e.g., ±0.1 degrees for ~11km radius).",
     schema: z.object({
       query: z.string(),
     }),

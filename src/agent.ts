@@ -5,7 +5,7 @@ import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { ChatGroq } from "@langchain/groq";
 import dbSchema from "./constants/prompts/dbAgent";
 import { geocodeCityTool, databaseTool } from "./utils/tools";
-import { initialPrompt, responsePromptAIVoice, responsePromptMarkdown } from "./constants/prompts/response";
+import { initialPrompt, getFormatPrompt } from "./constants/prompts/response";
 
 const tools = [geocodeCityTool, databaseTool];
 const toolNode = new ToolNode(tools);
@@ -17,25 +17,12 @@ const llm = new ChatGroq({
   apiKey: process.env.GROQ_API_KEY,
 }).bindTools(tools);
 
-const responseSchema = z.object({
-  ai_voice: z
-    .string()
-    .describe(
-      responsePromptAIVoice
-    ),
-  markdown_text: z
-    .string()
-    .describe(
-      responsePromptMarkdown
-    ),
-});
-
 const responseFormatter = new ChatGroq({
   model: "llama-3.1-8b-instant",
   temperature: 0,
   maxRetries: 2,
   apiKey: process.env.GROQ_API_KEY,
-}).withStructuredOutput(responseSchema);
+});
 
 const agentCallback = async (state: any) => {
   const response = await llm.invoke(state.messages);
@@ -44,6 +31,12 @@ const agentCallback = async (state: any) => {
 
 const shouldContinue = (state: any) => {
   const lastMessage = state.messages[state.messages.length - 1];
+  const messageCount = state.messages.length;
+  
+  if (messageCount > 20) {
+    return "end";
+  }
+  
   if (lastMessage?.tool_calls?.length) {
     return "tools";
   }
@@ -95,18 +88,33 @@ const chat = async (req: Request, res: Response) => {
         ? lastAgentMessage.content
         : JSON.stringify(lastAgentMessage?.content ?? "");
 
-    const structuredOutput = await responseFormatter.invoke([
-      {
-        role: "system",
-        content:
-          "Transform the provided assistant answer into both a plain voice-friendly sentence and a markdown-formatted response. Avoid adding extra commentary.",
-      },
-      { role: "user", content: assistantText },
+    const formatResponse = await responseFormatter.invoke([
+      { role: "user", content: getFormatPrompt(assistantText) },
     ]);
 
+    const formatText =
+      typeof formatResponse.content === "string"
+        ? formatResponse.content
+        : JSON.stringify(formatResponse.content ?? "");
+
+    let structuredOutput;
+    try {
+      const jsonMatch = formatText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        structuredOutput = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No JSON found in response");
+      }
+    } catch (parseError) {
+      structuredOutput = {
+        ai_voice: assistantText.substring(0, 200),
+        markdown_text: assistantText,
+      };
+    }
+
     res.status(200).json({
-      ai_voice: structuredOutput.ai_voice,
-      markdown_text: structuredOutput.markdown_text,
+      ai_voice: structuredOutput.ai_voice || assistantText.substring(0, 200),
+      markdown_text: structuredOutput.markdown_text || assistantText,
     });
   } catch (error) {
     console.error("Agent execution failed:", error);
