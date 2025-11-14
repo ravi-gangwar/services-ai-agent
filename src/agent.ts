@@ -3,15 +3,15 @@ import type { Request, Response } from "express";
 import z from "zod";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { ChatGroq } from "@langchain/groq";
-import dbSchema from "../constants/prompts/dbAgent";
-import geocodeCityTool from "../tools/geocodeCityTool";
-import databaseTool from "../tools/databaseTool";
+import dbSchema from "./constants/prompts/dbAgent";
+import { geocodeCityTool, databaseTool } from "./utils/tools";
+import { initialPrompt, responsePromptAIVoice, responsePromptMarkdown } from "./constants/prompts/response";
 
 const tools = [geocodeCityTool, databaseTool];
 const toolNode = new ToolNode(tools);
 
 const llm = new ChatGroq({
-  model: "openai/gpt-oss-120b",
+  model: "llama-3.1-8b-instant",
   temperature: 0,
   maxRetries: 2,
   apiKey: process.env.GROQ_API_KEY,
@@ -21,17 +21,17 @@ const responseSchema = z.object({
   ai_voice: z
     .string()
     .describe(
-      "Friendly response with simple wording and no special symbols so text-to-speech can read it clearly."
+      responsePromptAIVoice
     ),
   markdown_text: z
     .string()
     .describe(
-      "Markdown formatted response suitable for rendering in the frontend chat window."
+      responsePromptMarkdown
     ),
 });
 
 const responseFormatter = new ChatGroq({
-  model: "openai/gpt-oss-120b",
+  model: "llama-3.1-8b-instant",
   temperature: 0,
   maxRetries: 2,
   apiKey: process.env.GROQ_API_KEY,
@@ -64,13 +64,7 @@ const compiledWorkflow = workflow.compile();
 
 const systemMessage = {
   role: "system",
-  content:
-    "You are a food ordering assistant. When users do not provide latitude and longitude, ask for the city name and call the get_city_coordinates tool to obtain coordinates. Afterwards, generate SQL queries that filter using the retrieved coordinates via the interact_with_database tool. Always return a helpful plain-language summary of the results.",
-} as const;
-
-const schemaMessage = {
-  role: "system",
-  content: `Database schema:\n${dbSchema}`,
+  content: `${initialPrompt}\n\nDatabase schema:\n${dbSchema}`,
 } as const;
 
 const chat = async (req: Request, res: Response) => {
@@ -84,7 +78,6 @@ const chat = async (req: Request, res: Response) => {
     const initialState = {
       messages: [
         systemMessage,
-        schemaMessage,
         { role: "user", content: message },
       ],
     };
@@ -114,7 +107,6 @@ const chat = async (req: Request, res: Response) => {
     res.status(200).json({
       ai_voice: structuredOutput.ai_voice,
       markdown_text: structuredOutput.markdown_text,
-      raw_response: assistantText,
     });
   } catch (error) {
     console.error("Agent execution failed:", error);

@@ -1,3 +1,5 @@
+import createDbClient from "../db/dbClient";
+
 const GOOGLE_GEOCODE_ENDPOINT = "https://maps.googleapis.com/maps/api/geocode/json";
 
 const geocodeCity = async (city: string) => {
@@ -38,4 +40,18 @@ const geocodeCity = async (city: string) => {
   return JSON.stringify({ latitude: location.lat, longitude: location.lng });
 };
 
-export default geocodeCity;
+const callDB = async (query: string) => {
+  const client = createDbClient();
+  await client.connect();
+
+  try {
+    console.log("Executing query:", query);
+    const result = await client.query(query);
+    return JSON.stringify(result.rows);
+  } finally {
+    await client.end();
+  }
+};
+
+export { callDB, geocodeCity };
+

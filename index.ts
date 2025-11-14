@@ -1,9 +1,11 @@
 import express from "express"; // Import Express to create the HTTP server
-import chat from "./src/controller/agent"; // Import the chat controller that hosts the LangGraph agent
+import chat from "./src/agent"; // Import the chat controller that hosts the LangGraph agent
+import cors from "cors";
 
 const app = express();
 
 app.use(express.json());
+app.use(cors());
 
 app.get("/", (req, res) => {
   res.send("Hello World");

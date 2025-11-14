@@ -1,0 +1,17 @@
+node_modules
+.git
+.gitignore
+.env
+.env.*
+*.log
+.DS_Store
+README.md
+.vscode
+.idea
+coverage
+dist
+out
+*.tsbuildinfo
+.cache
+.eslintcache
+
